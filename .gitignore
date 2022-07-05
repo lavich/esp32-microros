@@ -1,5 +1,7 @@
 .pio
 src/credentials.h
+demo/.env
 .vscode/
 firmware.bin
 demo/.env
+.vscode
