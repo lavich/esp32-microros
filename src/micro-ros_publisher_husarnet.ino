@@ -1,5 +1,8 @@
 #include <Husarnet.h>
 #include <WiFi.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <AsyncElegantOTA.h>
 #include <micro_ros_arduino.h>
 #include <micro_ros_utilities/string_utilities.h>
 #include <rcl/error_handling.h>
@@ -51,10 +54,13 @@ const char *husarnetJoinCode = HUSARNET_JOINCODE;  // find at app.husarnet.com
     }                              \
   }
 
+#define HTTP_PORT 80
 #define AGENT_PORT 8888
 #define NODE_NAME "talker"
 char *agent_hostname = "microros-agent";
 
+
+AsyncWebServer server(HTTP_PORT);
 rcl_publisher_t publisher;
 std_msgs__msg__String msg;
 rclc_support_t support;
@@ -107,6 +113,23 @@ void setup(void) {
   Husarnet.selfHostedSetup("default");
   Husarnet.join(husarnetJoinCode, hostName);
   Husarnet.start();
+
+    // define HTTP API for remote reset
+  server.on("/reset", HTTP_POST, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", "Reseting ESP32 after 1s ...");
+    Serial1.println("Software reset on POST request");
+    delay(1000);
+    ESP.restart();
+  });
+
+  // Init OTA webserver (available under /update path)
+  AsyncElegantOTA.begin(&server);
+  server.begin();
+
+  // Example webserver hosting table with known Husarnet Hosts
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", "Hello world!!!");
+  });
 
   // waiting for Micro-ROS agent to be available on known peers list
   bool husarnetReady = 0;
